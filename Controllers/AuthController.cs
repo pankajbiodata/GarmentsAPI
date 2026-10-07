@@ -308,8 +308,23 @@ namespace GarmentsAPI.Controllers
                 userID = userID
             });
         }
+        [Authorize]
+        [HttpGet("debug-auth")]
+        public IActionResult DebugAuth()
+        {
+            return Ok(new
+            {
+                IsAuthenticated = User.Identity?.IsAuthenticated,
+                Name = User.Identity?.Name,
+                Role = User.FindFirst(ClaimTypes.Role)?.Value,
 
-
+                Claims = User.Claims.Select(c => new
+                {
+                    Type = c.Type,
+                    Value = c.Value
+                })
+            });
+        }
         // ====================================================
         // FIRST ADMIN
         // REMOVE THIS AFTER INITIAL SETUP

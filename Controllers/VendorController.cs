@@ -1,132 +1,255 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GarmentsAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class VendorController : ControllerBase
     {
         private readonly VendorRepository _vendorRepository;
 
-        // Constructor to inject the VendorRepository
-        public VendorController(VendorRepository vendorRepository)
+        public VendorController(
+            VendorRepository vendorRepository)
         {
             _vendorRepository = vendorRepository;
         }
 
-        // Endpoint to add a new vendor
+        // --------------------------------------------------
+        // Add Vendor
+        // Admin + Manager
+        // --------------------------------------------------
+
         [HttpPost("AddVendor")]
-        public ActionResult AddVendor([FromBody] Vendor vendor)
+        [Authorize(Roles = "Admin,Manager")]
+        public ActionResult AddVendor(
+            [FromBody] Vendor vendor)
         {
             try
             {
                 if (vendor == null)
                 {
-                    return BadRequest("Invalid vendor data.");
+                    return BadRequest(
+                        "Invalid vendor data.");
+                }
+
+                if (string.IsNullOrWhiteSpace(
+                    vendor.Name))
+                {
+                    return BadRequest(
+                        "Vendor name is required.");
+                }
+
+                if (string.IsNullOrWhiteSpace(
+                    vendor.Contact))
+                {
+                    return BadRequest(
+                        "Vendor contact is required.");
                 }
 
                 _vendorRepository.AddVendor(vendor);
-                return Ok(new { Message = "Vendor added successfully." });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
-        }
-        // DELETE: api/Vendor/DeleteVendor/{vendorId}
-        [HttpDelete("DeleteVendor/{vendorId}")]
-        public ActionResult DeleteVendor(int vendorId)
-        {
-            try
-            {
-                var existingVendor =
-                    _vendorRepository.GetVendorTransactions(vendorId);
-
-                if (existingVendor == null)
-                {
-                    return NotFound("Vendor not found.");
-                }
-
-                _vendorRepository.DeleteVendor(vendorId);
 
                 return Ok(new
                 {
-                    Message = "Vendor deleted successfully."
+                    Message =
+                        "Vendor added successfully."
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(
                     500,
-                    $"Internal server error: {ex.Message}"
-                );
+                    "An internal server error occurred.");
             }
         }
-        // Endpoint to update an existing vendor
-        [HttpPut("UpdateVendor/{vendorId}")]
-        public ActionResult UpdateVendor(int vendorId, [FromBody] Vendor vendor)
+
+        // --------------------------------------------------
+        // Delete Vendor
+        // Admin only
+        // --------------------------------------------------
+
+        [HttpDelete("DeleteVendor/{vendorId:int}")]
+        [Authorize(Roles = "Admin")]
+        public ActionResult DeleteVendor(
+            int vendorId)
         {
             try
             {
-                if (vendor == null || vendor.VendorID != vendorId)
+                if (vendorId <= 0)
                 {
-                    return BadRequest("Vendor data is invalid.");
+                    return BadRequest(
+                        "Invalid vendor ID.");
                 }
 
-                var existingVendor = _vendorRepository.GetVendorTransactions(vendorId);
+                var existingVendor =
+                    _vendorRepository
+                        .GetVendorTransactions(
+                            vendorId);
+
                 if (existingVendor == null)
                 {
-                    return NotFound("Vendor not found.");
+                    return NotFound(
+                        "Vendor not found.");
                 }
 
-                _vendorRepository.UpdateVendor(vendor);
-                return Ok(new { Message = "Vendor updated successfully." });
+                _vendorRepository.DeleteVendor(
+                    vendorId);
+
+                return Ok(new
+                {
+                    Message =
+                        "Vendor deleted successfully."
+                });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return StatusCode(
+                    500,
+                    "An internal server error occurred.");
             }
         }
 
-        // Endpoint to get a vendor's transactions
-        [HttpGet("GetVendorTransactions/{vendorId}")]
-        public ActionResult GetVendorTransactions(int vendorId)
+        // --------------------------------------------------
+        // Update Vendor
+        // Admin + Manager
+        // --------------------------------------------------
+
+        [HttpPut("UpdateVendor/{vendorId:int}")]
+        [Authorize(Roles = "Admin,Manager")]
+        public ActionResult UpdateVendor(
+            int vendorId,
+            [FromBody] Vendor vendor)
         {
             try
             {
-                var vendor = _vendorRepository.GetVendorTransactions(vendorId);
+                if (vendorId <= 0)
+                {
+                    return BadRequest(
+                        "Invalid vendor ID.");
+                }
 
                 if (vendor == null)
                 {
-                    return NotFound("Vendor not found.");
+                    return BadRequest(
+                        "Invalid vendor data.");
+                }
+
+                if (vendor.VendorID != vendorId)
+                {
+                    return BadRequest(
+                        "Vendor ID does not match.");
+                }
+
+                if (string.IsNullOrWhiteSpace(
+                    vendor.Name))
+                {
+                    return BadRequest(
+                        "Vendor name is required.");
+                }
+
+                if (string.IsNullOrWhiteSpace(
+                    vendor.Contact))
+                {
+                    return BadRequest(
+                        "Vendor contact is required.");
+                }
+
+                var existingVendor =
+                    _vendorRepository
+                        .GetVendorTransactions(
+                            vendorId);
+
+                if (existingVendor == null)
+                {
+                    return NotFound(
+                        "Vendor not found.");
+                }
+
+                _vendorRepository.UpdateVendor(
+                    vendor);
+
+                return Ok(new
+                {
+                    Message =
+                        "Vendor updated successfully."
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(
+                    500,
+                    "An internal server error occurred.");
+            }
+        }
+
+        // --------------------------------------------------
+        // Get Vendor Transactions
+        // Admin + Manager
+        // --------------------------------------------------
+
+        [HttpGet("GetVendorTransactions/{vendorId:int}")]
+        [Authorize(Roles = "Admin,Manager")]
+        public ActionResult GetVendorTransactions(
+            int vendorId)
+        {
+            try
+            {
+                if (vendorId <= 0)
+                {
+                    return BadRequest(
+                        "Invalid vendor ID.");
+                }
+
+                var vendor =
+                    _vendorRepository
+                        .GetVendorTransactions(
+                            vendorId);
+
+                if (vendor == null)
+                {
+                    return NotFound(
+                        "Vendor not found.");
                 }
 
                 return Ok(vendor);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return StatusCode(
+                    500,
+                    "An internal server error occurred.");
             }
         }
-        // Endpoint to get a customer's transactions
+
+        // --------------------------------------------------
+        // Get Vendor List
+        // Admin + Manager
+        // --------------------------------------------------
+
         [HttpGet("GetVendorList")]
+        [Authorize(Roles = "Admin,Manager")]
         public ActionResult GetVendorList()
         {
             try
             {
-                var vendors = _vendorRepository.GetVendorList();
+                var vendors =
+                    _vendorRepository
+                        .GetVendorList();
 
                 if (vendors == null)
                 {
-                    return NotFound("Vendors not found.");
+                    return NotFound(
+                        "Vendors not found.");
                 }
 
                 return Ok(vendors);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return StatusCode(
+                    500,
+                    "An internal server error occurred.");
             }
         }
     }

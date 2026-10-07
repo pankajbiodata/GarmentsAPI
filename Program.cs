@@ -1,31 +1,65 @@
-using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using GarmentsAPI;
-using System.Configuration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Register EmployeeRepository for DI
-builder.Services.AddScoped<EmployeeRepository>(provider =>
-    new EmployeeRepository("Server='localhost';Port=3306;Database=garmentsdb;Uid=dev;Pwd=Dev1@;"));
-builder.Services.AddScoped<InventoryRepository>(provider =>
-    new InventoryRepository("Server='localhost';Port=3306;Database=garmentsdb;Uid=dev;Pwd=Dev1@;"));
-builder.Services.AddScoped<VendorRepository>(provider =>
-    new VendorRepository("Server='localhost';Port=3306;Database=garmentsdb;Uid=dev;Pwd=Dev1@;"));
-builder.Services.AddScoped<CustomerRepository>(provider =>
-    new CustomerRepository("Server='localhost';Port=3306;Database=garmentsdb;Uid=dev;Pwd=Dev1@;"));
-builder.Services.AddScoped<PurchaseRepository>(provider =>
-    new PurchaseRepository("Server='localhost';Port=3306;Database=garmentsdb;Uid=dev;Pwd=Dev1@;"));
-builder.Services.AddScoped<SalesRepository>(provider =>
-    new SalesRepository("Server='localhost';Port=3306;Database=garmentsdb;Uid=dev;Pwd=Dev1@;"));
+// ============================================================
+// DATABASE
+// ============================================================
+
+var connectionString =
+    builder.Configuration.GetConnectionString("GarmentDB");
+
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new Exception(
+        "GarmentDB connection string is missing from appsettings.json");
+}
+
+// ============================================================
+// CONTROLLERS
+// ============================================================
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// ============================================================
+// REPOSITORIES
+// ============================================================
+
+builder.Services.AddScoped<EmployeeRepository>(
+    provider => new EmployeeRepository(connectionString)
+);
+
+builder.Services.AddScoped<InventoryRepository>(
+    provider => new InventoryRepository(connectionString)
+);
+
+builder.Services.AddScoped<VendorRepository>(
+    provider => new VendorRepository(connectionString)
+);
+
+builder.Services.AddScoped<CustomerRepository>(
+    provider => new CustomerRepository(connectionString)
+);
+
+builder.Services.AddScoped<PurchaseRepository>(
+    provider => new PurchaseRepository(connectionString)
+);
+
+builder.Services.AddScoped<SalesRepository>(
+    provider => new SalesRepository(connectionString)
+);
+
+builder.Services.AddScoped<UserRepository>(
+    provider => new UserRepository(connectionString)
+);
+
 // ============================================================
 // JWT AUTHENTICATION
 // ============================================================
@@ -34,41 +68,62 @@ var jwtKey = builder.Configuration["Jwt:Key"];
 
 if (string.IsNullOrWhiteSpace(jwtKey))
 {
-    throw new Exception("JWT Key is missing from appsettings.json");
+    throw new Exception(
+        "JWT Key is missing from appsettings.json");
+}
+
+var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+
+var jwtAudience = builder.Configuration["Jwt:Audience"];
+
+if (string.IsNullOrWhiteSpace(jwtIssuer))
+{
+    throw new Exception(
+        "JWT Issuer is missing from appsettings.json");
+}
+
+if (string.IsNullOrWhiteSpace(jwtAudience))
+{
+    throw new Exception(
+        "JWT Audience is missing from appsettings.json");
 }
 
 builder.Services
     .AddAuthentication(
-        JwtBearerDefaults.AuthenticationScheme
-    )
+        JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters =
             new TokenValidationParameters
             {
+                // Token validation
                 ValidateIssuer = true,
-
                 ValidateAudience = true,
-
                 ValidateLifetime = true,
-
                 ValidateIssuerSigningKey = true,
 
-                ValidIssuer =
-                    builder.Configuration["Jwt:Issuer"],
+                // Expected issuer
+                ValidIssuer = jwtIssuer,
 
-                ValidAudience =
-                    builder.Configuration["Jwt:Audience"],
+                // Expected audience
+                ValidAudience = jwtAudience,
 
+                // Signing key
                 IssuerSigningKey =
                     new SymmetricSecurityKey(
                         Encoding.UTF8.GetBytes(jwtKey)
                     ),
 
+                // IMPORTANT FOR [Authorize(Roles = "...")]
+                RoleClaimType = ClaimTypes.Role,
+
+                // IMPORTANT FOR User.Identity.Name
+                NameClaimType = ClaimTypes.Name,
+
+                // Don't allow expired tokens
                 ClockSkew = TimeSpan.Zero
             };
     });
-
 
 // ============================================================
 // AUTHORIZATION
@@ -76,43 +131,33 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-
 // ============================================================
-// DATABASE
-// ============================================================
-
-var connectionString =
-    builder.Configuration.GetConnectionString(
-        "GarmentDB"
-    );
-
-
-// ============================================================
-// REPOSITORIES
+// BUILD APPLICATION
 // ============================================================
 
-builder.Services.AddScoped<UserRepository>(
-    provider =>
-        new UserRepository(connectionString)
-);
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-//if (app.Environment.IsDevelopment())
-//{
-//    app.UseSwagger();
-//    app.UseSwaggerUI();
-//}
+// ============================================================
+// SWAGGER
+// ============================================================
+
 app.UseSwagger();
 app.UseSwaggerUI();
-// IMPORTANT:
-// Authentication MUST come before Authorization.
+
+// ============================================================
+// AUTHENTICATION / AUTHORIZATION
+// ============================================================
 
 app.UseAuthentication();
 
-
 app.UseAuthorization();
 
+// ============================================================
+// CONTROLLERS
+// ============================================================
+
 app.MapControllers();
+
 app.MapGet("/", () => "Garments API is running");
+
 app.Run();

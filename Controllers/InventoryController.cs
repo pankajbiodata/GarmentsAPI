@@ -1,125 +1,228 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Mysqlx.Expr;
 
 namespace GarmentsAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class InventoryController : ControllerBase
     {
         private readonly InventoryRepository _inventoryRepository;
 
-        // Constructor to inject the InventoryRepository
-        public InventoryController(InventoryRepository inventoryRepository)
+        public InventoryController(
+            InventoryRepository inventoryRepository)
         {
             _inventoryRepository = inventoryRepository;
         }
 
-        // Endpoint to add a new item to the inventory
+        // --------------------------------------------------
+        // Add Item
+        // Admin + Manager
+        // --------------------------------------------------
+
         [HttpPost("AddItem")]
-        public ActionResult AddItem([FromBody] InventoryItem item)
+        [Authorize(Roles = "Admin,Manager")]
+        public ActionResult AddItem(
+            [FromBody] InventoryItem item)
         {
             try
             {
                 if (item == null)
                 {
-                    return BadRequest("Invalid item data.");
+                    return BadRequest(
+                        "Invalid item data.");
                 }
 
                 _inventoryRepository.AddItem(item);
-                return Ok(new { Message = "Item added successfully." });
+
+                return Ok(new
+                {
+                    Message =
+                        "Item added successfully."
+                });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return StatusCode(
+                    500,
+                    "An internal server error occurred.");
             }
         }
 
-        // Endpoint to update an existing item in the inventory
-        [HttpPut("UpdateItem/{itemId}")]
-        public ActionResult UpdateItem(int itemId, [FromBody] InventoryItem item)
+        // --------------------------------------------------
+        // Update Item
+        // Admin + Manager
+        // --------------------------------------------------
+
+        [HttpPut("UpdateItem/{itemId:int}")]
+        [Authorize(Roles = "Admin,Manager")]
+        public ActionResult UpdateItem(
+            int itemId,
+            [FromBody] InventoryItem item)
         {
             try
             {
-                if (item == null || item.ItemID != itemId)
+                if (itemId <= 0)
                 {
-                    return BadRequest("Item data is invalid.");
+                    return BadRequest(
+                        "Invalid item ID.");
                 }
-
-                var existingItem = _inventoryRepository.GetInventoryReport().FirstOrDefault(i => i.ItemID == itemId);
-                if (existingItem == null)
-                {
-                    return NotFound("Item not found.");
-                }
-
-                _inventoryRepository.UpdateItem(item);
-                return Ok(new { Message = "Item updated successfully." });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
-        }
-
-        // Endpoint to delete an item from the inventory
-        [HttpDelete("DeleteItem/{itemId}")]
-        public ActionResult DeleteItem(int itemId)
-        {
-            try
-            {
-                var existingItem = _inventoryRepository.GetInventoryReport().FirstOrDefault(i => i.ItemID == itemId);
-                if (existingItem == null)
-                {
-                    return NotFound("Item not found.");
-                }
-
-                _inventoryRepository.DeleteItem(itemId);
-                return Ok(new { Message = "Item deleted successfully." });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
-        }
-        // Endpoint to delete an item from the inventory
-        // Endpoint to get a inventory by itemId
-        [HttpGet("GetItem/{itemId}")]
-        public ActionResult GetItem(int itemId)
-        {
-            try
-            {
-                var item = _inventoryRepository.GetInventoryByID(itemId);
 
                 if (item == null)
                 {
-                    return NotFound("Item not found.");
+                    return BadRequest(
+                        "Invalid item data.");
+                }
+
+                if (item.ItemID != itemId)
+                {
+                    return BadRequest(
+                        "Item ID does not match.");
+                }
+
+                var existingItem =
+                    _inventoryRepository
+                        .GetInventoryReport()
+                        .FirstOrDefault(
+                            i => i.ItemID == itemId);
+
+                if (existingItem == null)
+                {
+                    return NotFound(
+                        "Item not found.");
+                }
+
+                _inventoryRepository.UpdateItem(item);
+
+                return Ok(new
+                {
+                    Message =
+                        "Item updated successfully."
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(
+                    500,
+                    "An internal server error occurred.");
+            }
+        }
+
+        // --------------------------------------------------
+        // Delete Item
+        // Admin only
+        // --------------------------------------------------
+
+        [HttpDelete("DeleteItem/{itemId:int}")]
+        [Authorize(Roles = "Admin")]
+        public ActionResult DeleteItem(
+            int itemId)
+        {
+            try
+            {
+                if (itemId <= 0)
+                {
+                    return BadRequest(
+                        "Invalid item ID.");
+                }
+
+                var existingItem =
+                    _inventoryRepository
+                        .GetInventoryReport()
+                        .FirstOrDefault(
+                            i => i.ItemID == itemId);
+
+                if (existingItem == null)
+                {
+                    return NotFound(
+                        "Item not found.");
+                }
+
+                _inventoryRepository.DeleteItem(itemId);
+
+                return Ok(new
+                {
+                    Message =
+                        "Item deleted successfully."
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(
+                    500,
+                    "An internal server error occurred.");
+            }
+        }
+
+        // --------------------------------------------------
+        // Get Item
+        // Admin + Manager + Staff
+        // --------------------------------------------------
+
+        [HttpGet("GetItem/{itemId:int}")]
+        [Authorize(Roles = "Admin,Manager,Staff")]
+        public ActionResult GetItem(
+            int itemId)
+        {
+            try
+            {
+                if (itemId <= 0)
+                {
+                    return BadRequest(
+                        "Invalid item ID.");
+                }
+
+                var item =
+                    _inventoryRepository
+                        .GetInventoryByID(itemId);
+
+                if (item == null)
+                {
+                    return NotFound(
+                        "Item not found.");
                 }
 
                 return Ok(item);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return StatusCode(
+                    500,
+                    "An internal server error occurred.");
             }
         }
-        // Endpoint to get the inventory report (list of all items)
+
+        // --------------------------------------------------
+        // Get Inventory Report
+        // Admin + Manager + Staff
+        // --------------------------------------------------
+
         [HttpGet("GetInventoryReport")]
+        [Authorize(Roles = "Admin,Manager,Staff")]
         public ActionResult GetInventoryReport()
         {
             try
             {
-                var items = _inventoryRepository.GetInventoryReport();
+                var items =
+                    _inventoryRepository
+                        .GetInventoryReport()
+                        .ToList();
 
-                if (items == null || items.ToList().Count == 0)
+                if (items.Count == 0)
                 {
-                    return NotFound("No items found in inventory.");
+                    return NotFound(
+                        "No items found in inventory.");
                 }
 
                 return Ok(items);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return StatusCode(
+                    500,
+                    "An internal server error occurred.");
             }
         }
     }
