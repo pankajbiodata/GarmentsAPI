@@ -1,4 +1,4 @@
-@GarmentsAPI_HostAddress = http://localhost:5259
+@GarmentsAPI_HostAddress = https://9c50-49-205-47-35.ngrok-free.app
 
 GET {{GarmentsAPI_HostAddress}}/weatherforecast/
 Accept: application/json

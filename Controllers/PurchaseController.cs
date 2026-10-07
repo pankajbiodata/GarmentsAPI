@@ -101,5 +101,33 @@ namespace GarmentsAPI.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+        [HttpDelete("DeletePurchaseOrder/{purchaseId}")]
+        public ActionResult DeletePurchaseOrder(int purchaseId)
+        {
+            try
+            {
+                var existingOrder =
+                    _purchaseRepository.GetPurchaseOrderById(purchaseId);
+
+                if (existingOrder == null)
+                {
+                    return NotFound("Purchase order not found.");
+                }
+
+                _purchaseRepository.DeletePurchaseOrder(purchaseId);
+
+                return Ok(new
+                {
+                    Message = "Purchase order deleted successfully."
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(
+                    500,
+                    $"Internal server error: {ex.Message}"
+                );
+            }
+        }
     }
 }

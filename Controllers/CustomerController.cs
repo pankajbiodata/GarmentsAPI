@@ -78,7 +78,7 @@ namespace GarmentsAPI.Controllers
                 }
 
                 _customerRepository.DeleteCustomer(customerId);
-                return Ok(new { Message = "Customer updated successfully." });
+                return Ok(new { Message = "Customer deleted successfully." });
             }
             catch (Exception ex)
             {

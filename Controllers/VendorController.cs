@@ -34,7 +34,35 @@ namespace GarmentsAPI.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+        // DELETE: api/Vendor/DeleteVendor/{vendorId}
+        [HttpDelete("DeleteVendor/{vendorId}")]
+        public ActionResult DeleteVendor(int vendorId)
+        {
+            try
+            {
+                var existingVendor =
+                    _vendorRepository.GetVendorTransactions(vendorId);
 
+                if (existingVendor == null)
+                {
+                    return NotFound("Vendor not found.");
+                }
+
+                _vendorRepository.DeleteVendor(vendorId);
+
+                return Ok(new
+                {
+                    Message = "Vendor deleted successfully."
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(
+                    500,
+                    $"Internal server error: {ex.Message}"
+                );
+            }
+        }
         // Endpoint to update an existing vendor
         [HttpPut("UpdateVendor/{vendorId}")]
         public ActionResult UpdateVendor(int vendorId, [FromBody] Vendor vendor)

@@ -45,5 +45,15 @@ namespace GarmentsAPI
             return _dbConnection.Query<Vendor>(sql).ToList();
 
         }
+        // Delete a vendor
+        public void DeleteVendor(int vendorId)
+        {
+            string sql = "DELETE FROM Vendors WHERE VendorID = @VendorID";
+
+            _dbConnection.Execute(
+                sql,
+                new { VendorID = vendorId }
+            );
+        }
     }
 }
