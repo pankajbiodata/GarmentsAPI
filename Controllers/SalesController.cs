@@ -144,7 +144,7 @@ namespace GarmentsAPI.Controllers
                         "Invalid sales order data.");
                 }
 
-                if (order.SalesOrderID <= 0)
+                if (order.OrderID <= 0)
                 {
                     return BadRequest(
                         "Invalid sales order ID.");
@@ -153,7 +153,7 @@ namespace GarmentsAPI.Controllers
                 var existingOrder =
                     _salesRepository
                         .GetSalesOrderById(
-                            order.SalesOrderID);
+                            order.OrderID);
 
                 if (existingOrder == null)
                 {
